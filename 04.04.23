@@ -1,0 +1,104 @@
+ #importing librarie
+library(tm)  #for text mining
+library(ggplot2) #for visualisation
+library(lsa)
+
+#creating data
+text <-c("transporting foood by cars will cause global warming .so we should gp local.",
+         "we should try to convince our parents to stop using cars because it will cause global warming.",
+         "some food,such as mongo,requires a warm weather to grow .so they have to be transported to  the canada",
+         "a typical electronic circuit can be built with abattery,a bulb,and a switch.",
+         "electricity flows from batteries to  the bulb,just like water flows through a tube.",
+         "batteries have chemical energy in it.then electron flows through a bulb to light it up.",
+         "birds can fly because the have feather and they are light.",
+         "why some birds like pegeon can fly while some others like chicken cannot?",
+         "feather is important for bird's fly.if feather on a bird's wings is removed,this cannot fly.")
+
+text
+
+#factoring
+view<-factor(rep(c("view1","view2","view3"),each=3))
+view
+
+
+#converting it to dataframe
+df<-data.frame(text,view,stringsAsFactors = FALSE)
+df
+
+
+#preparing corpus
+corpus<-corpus(VectorSource(df$text))
+corpus<-tm_map(corpus,tolower)
+corpus<-tm_map(corpus,removePuntuation)
+corpus<-tm_map(corpus,function(x) removeWords(x,stopwords("english")))
+corpus<-tm_map(corpus,stemDocument,languge="english")
+corpus
+
+
+#term document matrix
+td.mat<-as.mtrix(TermDocumentMatrix(corpus))
+td.mat
+View(td.mat)
+
+#distance matrix
+dist.mat <-dist(t(as.matrix(td.mat)))
+dist.mat
+
+#classical multidimensional scaling
+fit <-cmdscale(dist.mat,eig=TRUE,k=2)
+fit
+
+#converting to dataframe
+points<-data.frame(x=fit$points[,1],y=fit$points[,2])
+view(points)
+
+#distance matrix plot
+ggplot(points,aes(x=x,y=y))+
+  geom_point(data=points,aes(x=x,y=y,color=df$view))+
+  geom_text(data=points,aes(x=x,y=y-0.2,label=row.names(df)))
+
+
+#weighting
+td.mat.lsa<-lw_bintf(td.mat)*gw_idf(td.mat)
+View(td.mat.lsa)
+
+#lsa
+lsaSpace<-lsa(td.mat.lsa)
+lsaSpace
+
+#computing dstnce matrix for lsa
+dist.mat.lsa<-dist(t(as.textmatrix(lsaSpace)))
+dist.mat.lsa
+
+#classial multi dimaensional scaling for lsa
+fit_lsa<-cmdscale(dist.mat.lsa,eig=TRUE,k=2)
+fit_lsa
+
+
+#converting to dataframe
+#converting to dataframe
+points_lsa<-data.frame(x=fit$points[,1],y=fit$points[,2])
+view(points_lsa)
+
+#distance matrix plot
+ggplot(points_lsa,aes(x=x,y=y))+
+  geom_point(data=points_lsa,aes(x=x,y=y,color=df$view))+
+  geom_text(data=points_lsa,aes(x=x,y=y-0.2,label=row.names(df)))
+
+#importing 3d visualisation library
+
+library(scatterplot3d)
+
+#classical multidimansional for scaling
+fit2<-cmdscale(dist.mat.lsa,eig=TRUE,k=3)
+fit2
+
+colors<-rep(c("blue","green","red"),each=3)
+colors
+
+
+#3D plot
+scatterplot3d(fit2$points[,1],fit2$points[, 2],y=fit2$points[, 3],
+              color=colors,pch=16,main="semantic space scaled to 3D",
+              xlab="x",ylab="y",zlab="z",type="h")
+
